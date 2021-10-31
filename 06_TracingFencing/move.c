@@ -6,56 +6,43 @@
 #include <stdlib.h>
 #include <string.h>
 
+#define fperror(format, ...) fprintf(stderr, format ": %s\n", ##__VA_ARGS__, strerror(errno))
+
 enum
 {
     OK,
     WRONG_USAGE,
     WRONG_FILE,
     NO_PERM,
-    OTHER_PROBLEMS,
-
+    OTHER_PROBLEMS
 };
 
-#define fperror(format, ...) fprintf(stderr, format ": %s\n", ##__VA_ARGS__, strerror(errno))
-
-int _check_error()  // char *message)
+int error_code()
 {
-    int exit_code;
     switch (errno) {
     case 0:
-        exit_code = OK;
-        break;
-    case EISDIR:
+        return OK;
     case ENAMETOOLONG:
     case ENOENT:
     case ELOOP:
-        exit_code = WRONG_FILE;
-        break;
+        return WRONG_FILE;
     case EACCES:
     case EROFS:
     case ETXTBSY:
-        exit_code = NO_PERM;
-        break;
+        return NO_PERM;
     default:
-        exit_code = OTHER_PROBLEMS;
-        break;
+        return OTHER_PROBLEMS;
     }
-
-    return exit_code;
-
-//    if (errno) {
-//        perror(message);
-//        exit(exit_code);
-//    }
 }
 
 #define check_error(...) do { \
-    int exit_code = _check_error(); \
+    int exit_code = error_code(); \
     if (exit_code) { \
         fperror(__VA_ARGS__); \
         exit(exit_code); \
     } \
 } while(0)
+
 
 int main(int argc, char **argv)
 {
@@ -91,3 +78,4 @@ int main(int argc, char **argv)
 
     return OK;
 }
+
