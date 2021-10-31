@@ -24,10 +24,6 @@ while [[ $# -gt 0 ]]; do
             shift
             shift
             ;;
-#       --default)
-#           DEFAULT=YES
-#           shift
-#           ;;
         *)
             POSITIONAL+=("$1")
             shift
@@ -53,25 +49,28 @@ content="1 + 1 = 2\n2 * 2 = 4\n123123213\n\n\n\n\n\t\t\t\t123 12 3 123 213 2  32
 printf "$content" > "$in_file"
 cp "$in_file" "$in_check_file"
 
-touch "$out_file"
-ls
+touch "$out_file"  # Otherwise strace don't see $out_file
 
-# -P "./$in_file" -P "./$out_file"
-# -P "$(pwd)/$in_file" -P "$(pwd)/$out_file"
-echo "$in_file $out_file $check_call $when $check_error"
-echo "$(pwd)/$in_file, $(pwd)/$out_file"
-strace -P "$(pwd)/$in_file" -P "$(pwd)/$out_file" -e fault="$check_call":error="$check_error":when="$when" ./move "$in_file" "$out_file" # > /dev/null 2> /dev/null
+strace -P "$in_file" -P "$out_file" -e fault="$check_call":error="$check_error":when="$when" ./move "$in_file" "$out_file" > /dev/null 2> /dev/null
 exit_code="$?"
-echo "$exit_code $expected_exit_code"
 
 # test_name="$0 (error = $check_error)"
 test_name="$check_error"
 printf "%-13s: " "$test_name"
-if [ "$exit_code" -ne "$expected_exit_code" ] || ( [ $exit_code -eq 0 ] && ! $(cmp -s "$in_check_file" "$out_file") ); then
-    echo "WA"
+verdict="OK"
+if [ "$exit_code" -ne "$expected_exit_code" ]; then
+   verdict="WA"
 else
-    echo "OK"
+    if [ $exit_code -eq 0 ]; then
+        if [ -f "$in_file" ]; then
+            verdict="WA"
+        elif ! $(cmp -s "$in_check_file" "$out_file"); then
+            verdict="WA"
+        fi
+    elif [ ! $check_call = "unlink" ] && ! $(cmp -s "$in_check_file" "$in_file"); then
+        verdict="WA"
+    fi
 fi
+echo "$verdict"
 
 rm -f "$in_file" "$out_file" "$in_check_file"
-
